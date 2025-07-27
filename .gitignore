@@ -1,0 +1,37 @@
+# === Node.js dependencies ===
+node_modules/
+front-end/node_modules/
+backend/node_modules/
+
+# === Build Output ===
+front-end/dist/
+backend/dist/  # if applicable
+
+# === Vite Cache ===
+front-end/node_modules/.vite/
+front-end/vite*.log
+
+# === Environment Files ===
+.env
+.env.*
+front-end/.env
+front-end/.env.*
+backend/.env
+backend/.env.*
+
+# === Editor/IDE Settings ===
+.vscode/
+front-end/.vscode/
+backend/.vscode/
+
+# === Logs ===
+*.log
+logs/
+
+# === OS Generated Files ===
+.DS_Store
+Thumbs.db
+
+# === Optional Coverage/Temp ===
+coverage/
+temp/
