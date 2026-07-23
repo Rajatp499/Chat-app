@@ -13,7 +13,7 @@ front-end/vite*.log
 
 # === Environment Files ===
 .env
-.env.*
+.env.deployment
 front-end/.env
 front-end/.env.*
 backend/.env
