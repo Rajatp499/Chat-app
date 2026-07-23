@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import Popup from 'reactjs-popup';
+import axiosInstance from '../lib/axiosInstance';
+import { toast } from 'react-toastify';
 
 const Navbar = () => {
 
@@ -31,21 +33,15 @@ const handleUpload = async () => {
   formData.append("file", selectedFile);
 
   try {
-    const res = await fetch("http://localhost:3000/user/upload", {
-      method: "POST",
-      credentials: "include",
-      body: formData,
+    const res = await axiosInstance.post("/user/upload", formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
-
-    if (res.ok) {
-      const result = await res.json();
-      console.log("Upload successful:", result);
-      window.location.reload(); // ✅ Refresh page after upload
-    } else {
-      console.error("Upload failed");
-    }
+    console.log("Upload successful:", res.data);
+    toast.success('Profile image updated');
+    window.location.reload(); // ✅ Refresh page after upload
   } catch (err) {
     console.error("Error uploading file", err);
+    toast.error('Error uploading file');
   }
 };
 
@@ -58,17 +54,14 @@ const cancelSelection = () => {
 
   const logout = async () => {
     try {
-      const result = await fetch('http://localhost:3000/auth/logout', {
-        method: 'GET',
-        credentials: 'include',
-      });
-
-      const response = await result.json()
-      console.log(response)
-      window.location.reload()
+      const { data } = await axiosInstance.get('/auth/logout');
+      console.log(data);
+      toast.info('Logged out');
+      window.location.reload();
     }
     catch (err) {
       console.log(err);
+      toast.error('Logout failed');
     }
   }
 

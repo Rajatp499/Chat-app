@@ -1,5 +1,7 @@
 import React from 'react'
 import { useNavigate } from 'react-router';
+import axiosInstance from '../lib/axiosInstance';
+import { toast } from 'react-toastify';
 
 
 const login = () => {
@@ -13,25 +15,20 @@ const login = () => {
             password: e.target.password.value
         }
 
-        const response = await fetch(`http://localhost:3000/auth/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            credentials: 'include',
-            body: JSON.stringify(formData)
-        });
-
-        // 
-        // if(response.code)
-        const message = await response.json()
-        console.log(message)
-        if(response.status == 200){
-            window.alert("Login Sucessfull")
-            navigate('/')
-            window.location.reload();
-        }else{
-            window.alert(message.error)
+        try {
+            const { data, status } = await axiosInstance.post('/auth/login', formData);
+            console.log(data);
+            if (status === 200) {
+                toast.success('Login Successful');
+                navigate('/');
+                window.location.reload();
+            } else {
+                toast.error(data.error || 'Login failed');
+            }
+        } catch (error) {
+            console.error(error);
+            const message = error.response?.data?.error || 'Login failed';
+            toast.error(message);
         }
     }
 

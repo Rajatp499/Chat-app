@@ -10,7 +10,11 @@ const messageSchema = new mongoose.Schema({
         required: true,
     },text:{
         type:String,
-        required: true,
+        // required: true,
+    },
+    file:{
+        type: String,
+        required: false
     },
     time:{
         type:Date,

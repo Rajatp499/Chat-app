@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  # 1. FRONTEND
+  frontend:
+    build: 
+      context: ./front-end             
+      dockerfile: Dockerfile
+    container_name: chat-frontend
+    restart: "no"
+    ports:
+      - "5173:5173"                   
+    environment:
+      - VITE_API_URL=http://localhost:3000 
+
+  # 2. BACKEND
+  backend:
+    build:
+      context: ./backend              
+      dockerfile: Dockerfile
+    container_name: chat-backend
+    restart: "no"
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - MONGOURL=mongodb://mongodb:27017/mydb 
+      - SECRET=helohelo
+      - APP_PASSWORD=fpmycdqcipoipmtb
+    depends_on:
+      - mongodb                       
+
+  # 3. DATABASE
+  mongodb:
+    image: mongo:4.4
+    container_name: chat-mongodb
+    restart: always
+    ports:
+      - "27017:27017"                
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:
+    driver: local

@@ -23,15 +23,18 @@ app.use(cookieParser());
 const path = require("path");
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
+const requireAuth = require("./middleware/auth");
+// app.use(requireAuth);
+
 // MongoDB connection
 const mongoose = require("mongoose");
 mongoose
   .connect(process.env.MONGOURL)
   .then(() => {
-    server.listen(process.env.PORT || 4000, () => {
+    server.listen(process.env.PORT || 3000, () => {
       console.log(
         "Connected to MongoDB successfully and running at port",
-        process.env.PORT || 4000
+        process.env.PORT || 3000
       );
     });
   })

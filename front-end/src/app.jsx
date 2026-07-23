@@ -4,6 +4,9 @@ import React,{useEffect, useState} from 'react'
 import Routes from './Routes.jsx'
 import { useDispatch } from 'react-redux'
 import { updateUser } from './Slices/userSlice.js';
+import axiosInstance from './lib/axiosInstance.js';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const app = () => {
   const dispatch = useDispatch();
@@ -12,16 +15,11 @@ const app = () => {
     useEffect(() => {
     const getUSer = async () => {
       try {
-        const result = await fetch('http://localhost:3000/user/get-user', {
-          method: 'GET',
-          credentials: 'include'
-        })
-
-        const response = await result.json();
-        dispatch(updateUser(response.message))
+        const { data } = await axiosInstance.get('/user/get-user');
+        dispatch(updateUser(data.message));
       }
       catch (err) {
-        console.log(err.message);
+        console.error(err);
       }
     };
     getUSer()
@@ -32,7 +30,10 @@ const app = () => {
     
   return (
     // <OTPWithPopup />
-    <Routes />
+    <>
+      <Routes />
+      <ToastContainer position="top-right" autoClose={3000} />
+    </>
   )
 }
 

@@ -51,15 +51,55 @@ const form = () => {
 
     }
 
-    console.log(gender)
-    const gender_change=(e)=>{
+    const gender_change = (e) => {
         setGender(e.target.value)
-        // console.log(e.target.value)
     }
 
     //POPUP
-    const [otp, setOtp] = useState();
+    const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [popupOpen, setPopupOpen] = useState(false);
+
+    const handleOtpChange = (index, value) => {
+        // Only allow single digit
+        if (value.length > 1) return;
+
+        // Only allow numbers
+        if (value && !/^\d$/.test(value)) return;
+
+        const newOtp = [...otp];
+        newOtp[index] = value;
+        setOtp(newOtp);
+
+        // Auto-focus next input if value is entered
+        if (value && index < 5) {
+            document.getElementById(`otp-${index + 1}`).focus();
+        }
+    };
+
+    const handleOtpKeyDown = (index, e) => {
+        // Handle backspace
+        if (e.key === 'Backspace' && !otp[index] && index > 0) {
+            document.getElementById(`otp-${index - 1}`).focus();
+        }
+    };
+
+    const handleOtpPaste = (e) => {
+        e.preventDefault();
+        const pastedData = e.clipboardData.getData('text').slice(0, 6);
+
+        if (!/^\d+$/.test(pastedData)) return;
+
+        const newOtp = [...otp];
+        pastedData.split('').forEach((char, index) => {
+            if (index < 6) newOtp[index] = char;
+        });
+        setOtp(newOtp);
+
+        // Focus last filled input or the 6th one
+        const lastIndex = Math.min(pastedData.length, 5);
+        document.getElementById(`otp-${lastIndex}`).focus();
+    };
+
 
     const popUp = async (e) => {
         e.preventDefault();
@@ -77,7 +117,7 @@ const form = () => {
             if (response.message == "OTP sent successfully") {
                 setPopupOpen(true);
             }
-            else{
+            else {
                 window.alert(response.message)
             }
         }
@@ -90,8 +130,13 @@ const form = () => {
 
 
     const handleSubmit = async () => {
-        console.log("Entered OTP:", otp);
-        send(otp);
+        const otpString = otp.join('');
+        if (otpString.length !== 6) {
+            window.alert("Please enter all 6 digits");
+            return;
+        }
+        console.log("Entered OTP:", otpString);
+        send(otpString);
     };
 
 
@@ -110,8 +155,8 @@ const form = () => {
                 <div className="mb-4">
                     <label htmlFor="genser" className="block text-gray-700 mb-2">Gender:</label>
                     <div className='flex justify-around'>
-                    <div><input type="radio"   name="gender" value='male' onChange={gender_change} className="form-radio text-blue-600" /> Male</div>
-                    <div><input type="radio"  name="gender" value='female' onChange={gender_change} className="form-radio text-blue-600" /> Female</div>
+                        <div><input type="radio" name="gender" value='male' onChange={gender_change} className="form-radio text-blue-600" /> Male</div>
+                        <div><input type="radio" name="gender" value='female' onChange={gender_change} className="form-radio text-blue-600" /> Female</div>
                     </div>
 
                 </div>
@@ -132,21 +177,85 @@ const form = () => {
         </div>
 
         <Popup open={popupOpen} onClose={() => setPopupOpen(false)}>
-            <div style={{ padding: "2rem", textAlign: "center" }}>
-                <h3>Enter OTP that has been sent to your email.</h3>
-                <div style={{ display: "flex", justifyContent: "center", gap: "0.5rem", margin: "1rem 0" }}>
-                    <input
-                        name='otp'
-                        type="number"
-                        maxLength={6}
-                        value={otp}
-                        onChange={(e) => setOtp(e.target.value)}
-                    />
+            <div style={{ padding: "2rem", textAlign: "center", minWidth: "400px" }}>
+                <h3 style={{ marginBottom: "1.5rem", color: "#333" }}>Enter OTP</h3>
+                <p style={{ color: "#666", marginBottom: "1.5rem", fontSize: "14px" }}>
+                    Enter the 6-digit code sent to your email
+                </p>
+                <div style={{
+                    display: "flex",
+                    justifyContent: "center",
+                    gap: "0.5rem",
+                    margin: "1.5rem 0"
+                }}>
+                    {otp.map((digit, index) => (
+                        <input
+                            key={index}
+                            id={`otp-${index}`}
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={1}
+                            value={digit}
+                            onChange={(e) => handleOtpChange(index, e.target.value)}
+                            onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                            onPaste={index === 0 ? handleOtpPaste : undefined}
+                            style={{
+                                width: "45px",
+                                height: "50px",
+                                fontSize: "24px",
+                                textAlign: "center",
+                                border: "2px solid #ddd",
+                                borderRadius: "8px",
+                                outline: "none",
+                                transition: "all 0.2s",
+                            }}
+                            onFocus={(e) => {
+                                e.target.style.borderColor = "#3b82f6";
+                                e.target.style.boxShadow = "0 0 0 3px rgba(59, 130, 246, 0.1)";
+                            }}
+                            onBlur={(e) => {
+                                e.target.style.borderColor = "#ddd";
+                                e.target.style.boxShadow = "none";
+                            }}
+                        />
+                    ))}
                 </div>
-                <button onClick={handleSubmit} style={{ marginRight: "1rem" }}>
-                    Submit
-                </button>
-                <button onClick={() => setPopupOpen(false)}>Close</button>
+                <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center", marginTop: "2rem" }}>
+                    <button
+                        onClick={handleSubmit}
+                        style={{
+                            padding: "0.6rem 2rem",
+                            backgroundColor: "#3b82f6",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "6px",
+                            fontSize: "16px",
+                            cursor: "pointer",
+                            fontWeight: "500"
+                        }}
+                        onMouseOver={(e) => e.target.style.backgroundColor = "#2563eb"}
+                        onMouseOut={(e) => e.target.style.backgroundColor = "#3b82f6"}
+                    >
+                        Verify OTP
+                    </button>
+                    <button
+                        onClick={() => setPopupOpen(false)}
+                        style={{
+                            padding: "0.6rem 2rem",
+                            backgroundColor: "#e5e7eb",
+                            color: "#374151",
+                            border: "none",
+                            borderRadius: "6px",
+                            fontSize: "16px",
+                            cursor: "pointer",
+                            fontWeight: "500"
+                        }}
+                        onMouseOver={(e) => e.target.style.backgroundColor = "#d1d5db"}
+                        onMouseOut={(e) => e.target.style.backgroundColor = "#e5e7eb"}
+                    >
+                        Cancel
+                    </button>
+                </div>
             </div>
         </Popup>
     </>

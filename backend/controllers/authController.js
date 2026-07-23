@@ -6,6 +6,37 @@ const sendMail = require("../middleware/emailVerification");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 
+//Delete unverified users every time anyone logges in
+const deleteUnverifiedUsers =async()=>{
+  try{
+
+    await User.deleteMany({otpExpires:{$exists: true}});
+  }
+  catch(err){
+    console.log(err)
+  }
+
+}
+
+//CHECK AUTH
+exports.checkAuth = (req, res, next) => {
+  const token = req.cookies.token;
+  if (token) {
+    jwt.verify(token, process.env.SECRET, (err, decodedToken) => {
+      if (err) {
+        console.log(err.message);
+        res.status(401).json({ message: "Invalid Token" });
+      } else {
+        res.status(200).json({ message: decodedToken });
+        next();
+      }
+    });
+  } else {
+    res.status(401).json({ message: "No Token Found" });
+  }
+};
+
+
 //REGISTER ENDPOINT
 exports.register = async (req, res) => {
   const { name, email, password, otp, gender } = req.body;
@@ -59,7 +90,6 @@ exports.register = async (req, res) => {
 //LOGIN ENDPOINT
 exports.login = async (req, res) => {
   const { email, password } = req.body;
-  // console.log(password)
 
   try {
     const user = await User.findOne({ email });
@@ -72,6 +102,8 @@ exports.login = async (req, res) => {
         res.cookie("token", token, { httpOnly: true, maxAge: maxAge * 1000, secure:false});
         console.log("cookie saved");
         res.status(200).json({ message: "Login Sucessful" });
+        deleteUnverifiedUsers();
+
         return;
       }
       throw Error("invalid password");
@@ -91,7 +123,7 @@ exports.logout = (req, res) => {
 //SEND_OTP ENDPOINT
 exports.send_otp = async (req, res) => {
   try {
-    const otp = Math.floor(Math.random() * 1000000);
+    const otp = Math.floor(100000 + Math.random() * 900000);
     const email = req.body.email;
     const user = await User.findOne({email})
     if(user){
@@ -99,7 +131,6 @@ exports.send_otp = async (req, res) => {
       return;
     }
 
-    console.log("otp =", otp);
     sendMail(otp, email);
     await User.updateOne(
       { email },

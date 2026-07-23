@@ -53,7 +53,7 @@ io.on("connection", async (socket) => {
         console.log(err.message);
       } else {
         userId = decodedToken.id
-        id1 == decodedToken.id ? selectedUserId = id2 :selectedUserId = id1
+        id1 === decodedToken.id ? (selectedUserId = id2) :(selectedUserId = id1)
       }
     });
   }
@@ -61,7 +61,7 @@ io.on("connection", async (socket) => {
 
   });
 
-  // Handle sending messages
+  // Handle sending text messages
   socket.on("send_message",async({ roomId, message }) => {
     // console.log('received message:', message.time)
     try {
@@ -79,6 +79,26 @@ io.on("connection", async (socket) => {
 
   });
 
+  //handle sending file messages
+  socket.on('send_file', async({roomId, message})=>{
+    try{
+    const messages = new Message(message);
+    // console.log(messages, message)
+    io.emit("receive_message", messages);
+      const receiverUser = await User.findById(messages.to)
+      if(receiverUser.status == 'online'){
+        messages.delivered = true;
+      }
+      messages.save();
+    } 
+    catch (err) {
+      console.log("Error saving messgaes in database", err);
+    }
+    
+
+
+  })
+
   socket.on("disconnect", async() => {
     console.log("A user disconnected:", socket.id);
 
@@ -88,7 +108,7 @@ io.on("connection", async (socket) => {
     jwt.verify(token, process.env.SECRET, async(err, decodedToken) => {
       if (err) {
         console.log(err.message);
-        res.status(401).json({ message: "Invalid Token" });
+        // res.status(401).json({ message: "Invalid Token" });
       } else {
         await User.updateOne({_id:decodedToken.id},{
           status:'offline'

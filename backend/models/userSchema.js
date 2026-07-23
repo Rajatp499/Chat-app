@@ -34,7 +34,7 @@ const userSchema = new mongoose.Schema({
   },
   profile:{
     type:String,
-    default: 'uploads/default.jpg',
+    default: 'uploads/profile/default.jpg',
     required: false
   },
   gender:{
