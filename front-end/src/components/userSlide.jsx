@@ -1,5 +1,5 @@
 // src/components/UsersSidebar.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useEffectLayout } from 'react';
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { useSelector } from 'react-redux';
 import socket from '../socket/Socket';
@@ -12,6 +12,7 @@ const UsersSidebar = ({ onSelectUser }) => {
   const [unReadChat, setUnReadChat] = useState([]);
   const [activeId, setActiveId] = useState(null);
   const [open, setOpen] = useState(true);
+
 
   useEffect(() => {
     const handleReceive = (m) => {
@@ -48,17 +49,19 @@ const UsersSidebar = ({ onSelectUser }) => {
     unreadChat();
   }, [user]);
 
+  // console.log(users)
+
   const handleSelect = (id) => {
     setActiveId(id);
     setUnReadChat((prev) => prev.filter((uid) => uid !== id));
     onSelectUser(id);
   };
 
+
   return (
     <div
-      className={`h-full bg-white m-4 mr-0 border border-slate-200 transition-all duration-300 ease-in-out flex flex-col rounded-2xl shadow-sm ${
-        open ? 'w-72' : 'w-20'
-      }`}
+      className={`h-full bg-white m-4 mr-0 border border-slate-200 transition-all duration-300 ease-in-out flex flex-col rounded-2xl shadow-sm ${open ? 'w-72' : 'w-20'
+        }`}
     >
       {/* Title */}
       <div className="p-4 border-b border-slate-100 flex items-center justify-between">
@@ -83,9 +86,8 @@ const UsersSidebar = ({ onSelectUser }) => {
               <div
                 key={u._id}
                 onClick={() => handleSelect(u._id)}
-                className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition ${
-                  active ? 'bg-indigo-50' : 'hover:bg-slate-50'
-                } ${open ? 'justify-start' : 'justify-center'}`}
+                className={`flex items-center gap-3 p-2 rounded-xl cursor-pointer transition ${active ? 'bg-indigo-50' : 'hover:bg-slate-50'
+                  } ${open ? 'justify-start' : 'justify-center'}`}
               >
                 <div className="relative flex-shrink-0">
                   <img

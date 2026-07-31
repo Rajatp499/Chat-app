@@ -27,6 +27,9 @@ services:
       - MONGOURL=${MONGOURL}
       - SECRET=${SECRET}
       - APP_PASSWORD=${APP_PASSWORD}
+      - AI_USER_PASSWORD=${AI_USER_PASSWORD}
+      - AI_API_URL=${AI_API_URL}
+      - AI_API_KEY=${AI_API_KEY}
     depends_on:
       - mongodb
 
@@ -40,6 +43,18 @@ services:
     volumes:
       - mongo-data:/data/db
 
+  #4. Ollama
+  ollama:
+    image: ollama/ollama:0.17.0
+    container_name: chat-ollama
+    restart: always
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+
 volumes:
   mongo-data:
+    driver: local
+  ollama-data:
     driver: local

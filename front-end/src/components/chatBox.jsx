@@ -128,7 +128,7 @@ const ChatBox = ({ selectedUserId }) => {
       </div>
 
       {/* Chat Messages */}
-      <div className="flex-1 overflow-y-hidden px-5 py-4 space-y-3 bg-slate-50">
+      <div className="flex-1 overflow-y-scroll px-5 py-4 space-y-3 bg-slate-50">
         {visibleMessages.length === 0 && (
           <div className="h-full flex items-center justify-center text-slate-400 text-sm">
             No messages yet — say hello 👋

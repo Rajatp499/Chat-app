@@ -1,5 +1,5 @@
 //validator
-const {isEmail} = require("validator");
+const { isEmail } = require("validator");
 
 //Bcrypt for hashing
 const bcrypt = require("bcrypt");
@@ -15,44 +15,50 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: [true, "Please enter a email"],
     unique: true,
-    validate:[isEmail, "Please enter a valid email"]
+    validate: [
+      (value) => {
+        if (value === "gpt-oss:120b-cloud") return true;
+        return isEmail(value);
+      },
+      "Please enter a valid email",
+    ],
   },
   password: {
     type: String,
     required: [true, "Please enter a password"],
-    minlength:[6, "please enter strong password"]
+    minlength: [6, "please enter strong password"],
   },
-  otp:{
-    type:Number,
+  otp: {
+    type: Number,
   },
-  otpExpires:{
-    type:Date,
+  otpExpires: {
+    type: Date,
   },
   createdAt: {
     type: Date,
     default: Date.now(),
   },
-  profile:{
-    type:String,
-    default: 'uploads/profile/default.jpg',
-    required: false
+  profile: {
+    type: String,
+    default: "uploads/profile/default.jpg",
+    required: false,
   },
-  gender:{
-    type:String,
-    required:true,
-    default:'not specified',
-    enum:['male', 'female', 'not specified']
+  gender: {
+    type: String,
+    required: true,
+    default: "not specified",
+    enum: ["male", "female", "not specified"],
   },
-  status:{
-    type:String,
-    enum:['online','offline']
-  }
+  status: {
+    type: String,
+    enum: ["online", "offline"],
+  },
 });
 
-userSchema.pre('save',async function(next){
-  const salt =await bcrypt.genSalt();
-  this.password =await bcrypt.hash(this.password,salt);
+userSchema.pre("save", async function (next) {
+  const salt = await bcrypt.genSalt();
+  this.password = await bcrypt.hash(this.password, salt);
   next();
-})
+});
 
 module.exports = mongoose.model("User", userSchema);

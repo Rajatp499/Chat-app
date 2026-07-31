@@ -2,19 +2,19 @@ const express = require("express");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const messageRoutes = require("./routes/messageRoutes");
-const cors = require('cors')
+const cors = require("cors");
+require("dotenv").config();
 
-const {app, server}= require('./socket/socket')
+const { app, server } = require("./socket/socket");
 
-
-app.use(cors({
-  origin: 'http://localhost:5173',
-  credentials: true,
-}));
-
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  }),
+);
 
 app.use(express.json());
-require("dotenv").config();
 
 //Cookie Parser
 const cookieParser = require("cookie-parser");
@@ -28,15 +28,17 @@ const requireAuth = require("./middleware/auth");
 
 // MongoDB connection
 const mongoose = require("mongoose");
+const seedAiUser = require("./seeders/seedAIUser");
 mongoose
   .connect(process.env.MONGOURL)
-  .then(() => {
+  .then(async () => {
     server.listen(process.env.PORT || 3000, () => {
       console.log(
         "Connected to MongoDB successfully and running at port",
-        process.env.PORT || 3000
+        process.env.PORT || 3000,
       );
     });
+    await seedAiUser();
   })
   .catch((err) => {
     console.error("Error connecting to MongoDB:", err);
