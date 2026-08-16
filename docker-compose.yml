@@ -37,6 +37,7 @@ services:
   mongodb:
     image: mongo:4.4
     container_name: chat-mongodb
+    command: ["mongod", "--nounixsocket", "--bind_ip_all"]
     restart: always
     ports:
       - "27017:27017"

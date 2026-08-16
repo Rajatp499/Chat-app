@@ -1,17 +1,15 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import Navbar from '../components/Navbar';
-import { useNavigate } from 'react-router';
 import UsersSidebar from '../components/userSlide';
 import NoUserSelected from '../components/NoUserSelected'
 import ChatBox from '../components/chatBox';
-import { useSelector } from 'react-redux';
-import axiosInstance from '../lib/axiosInstance';
-import { toast } from 'react-toastify';
+
+const AVAILABLE_AI_MODELS = ['gpt-oss:120b-cloud', 'qwen:1.8b'];
+const DEFAULT_AI_MODEL = AVAILABLE_AI_MODELS[0];
 
 const Chat = () => {
-  const navigate = useNavigate();
   const [selectedUserId, setSelectedUserId] = useState(null)
-  const user = useSelector(state => state.user)
+  const [selectedModel, setSelectedModel] = useState(DEFAULT_AI_MODEL)
 
 
   return (
@@ -23,7 +21,12 @@ const Chat = () => {
           />
         {
           selectedUserId ?
-            <ChatBox selectedUserId={selectedUserId} /> :
+            <ChatBox
+              selectedUserId={selectedUserId}
+              selectedModel={selectedModel}
+              onSelectedModelChange={setSelectedModel}
+              availableModels={AVAILABLE_AI_MODELS}
+            /> :
             <NoUserSelected />
         }
       </div>

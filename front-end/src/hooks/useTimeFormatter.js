@@ -1,6 +1,5 @@
-export const useTimeFormatter = (time) => {
+export const formatTime = (time) => {
   const date = new Date(time)
-  // console.log(time)
   const options = {
     month: "long",
     day: "numeric",

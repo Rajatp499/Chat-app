@@ -8,9 +8,9 @@ import { FaFileAlt } from "react-icons/fa";
 import { IoMdClose } from "react-icons/io";
 import axiosInstance from '../lib/axiosInstance';
 import { toast } from 'react-toastify';
-import { useTimeFormatter } from '../hooks/useTimeFormatter'; // see note below re: hook -> fn
+import { formatTime } from '../hooks/useTimeFormatter';
 
-const ChatBox = ({ selectedUserId }) => {
+const ChatBox = ({ selectedUserId, selectedModel, onSelectedModelChange, availableModels }) => {
   const user = useSelector(state => state.user);
 
   const [messages, setMessages] = useState([]);
@@ -29,7 +29,7 @@ const ChatBox = ({ selectedUserId }) => {
         });
         data.message.forEach((msg) => {
           msg.fromMe = (msg.from === user.id);
-          msg.time = useTimeFormatter(msg.time);
+          msg.time = formatTime(msg.time);
         });
         setMessages(data.message);
       } catch (error) {
@@ -38,12 +38,12 @@ const ChatBox = ({ selectedUserId }) => {
       }
     };
     fetchMessages();
-  }, [roomId]);
+  }, [roomId, selectedUserId, user.id]);
 
   useEffect(() => {
     socket.emit('join_room', roomId);
     return () => socket.emit('leave_room', roomId);
-  }, [roomId]);
+  }, [roomId, user.id]);
 
   const sendMessage = () => {
     if (selectedFiles.length === 0) {
@@ -57,6 +57,7 @@ const ChatBox = ({ selectedUserId }) => {
           time: Date.now(),
           delivered: false,
           seen: false,
+          model: selectedModel,
         }
       });
       setInput('');
@@ -70,6 +71,7 @@ const ChatBox = ({ selectedUserId }) => {
           time: Date.now(),
           delivered: false,
           seen: false,
+          model: selectedModel,
         }
       });
       setSelectedFiles([]);
@@ -79,12 +81,83 @@ const ChatBox = ({ selectedUserId }) => {
   useEffect(() => {
     const handleReceive = (msg) => {
       msg.fromMe = msg.from === user.id;
-      msg.time = useTimeFormatter(msg.time);
+      msg.time = formatTime(msg.time);
       setMessages((prev) => [...prev, msg]);
     };
     socket.on('receive_message', handleReceive);
     return () => socket.off('receive_message', handleReceive);
-  }, []);
+  }, [user.id]);
+
+  // --- AI streaming ---
+  // The backend sends three events per AI reply, all sharing the same
+  // streamId: "ai_stream_start" (create an empty bubble), "ai_stream_chunk"
+  // (append text to it), and "ai_stream_end" (mark it as finished, replace
+  // with the final full text). We match on streamId, not array index, so
+  // out-of-order re-renders can't corrupt the wrong bubble.
+  useEffect(() => {
+    const handleStreamStart = (data) => {
+      if (data.roomId !== roomId) return;
+      setMessages((prev) => [
+        ...prev,
+        {
+          _id: data.streamId,
+          from: data.from,
+          to: data.to,
+          text: '',
+          time: formatTime(Date.now()),
+          fromMe: false,
+          delivered: false,
+          seen: false,
+          streaming: true,
+        },
+      ]);
+    };
+
+    const handleStreamChunk = (data) => {
+      if (data.roomId !== roomId) return;
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === data.streamId
+            ? { ...msg, text: msg.text + data.text }
+            : msg
+        )
+      );
+    };
+
+    const handleStreamEnd = (data) => {
+      if (data.roomId !== roomId) return;
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === data.streamId
+            ? { ...msg, text: data.fullText, streaming: false, delivered: true }
+            : msg
+        )
+      );
+    };
+
+    const handleStreamError = (data) => {
+      if (data.roomId !== roomId) return;
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg._id === data.streamId
+            ? { ...msg, text: msg.text || 'Something went wrong.', streaming: false, error: true }
+            : msg
+        )
+      );
+    };
+
+    socket.on('ai_stream_start', handleStreamStart);
+    socket.on('ai_stream_chunk', handleStreamChunk);
+    socket.on('ai_stream_end', handleStreamEnd);
+    socket.on('ai_stream_error', handleStreamError);
+
+    return () => {
+      socket.off('ai_stream_start', handleStreamStart);
+      socket.off('ai_stream_chunk', handleStreamChunk);
+      socket.off('ai_stream_end', handleStreamEnd);
+      socket.off('ai_stream_error', handleStreamError);
+    };
+  }, [roomId]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -125,6 +198,26 @@ const ChatBox = ({ selectedUserId }) => {
           <p className="font-semibold text-slate-800 text-sm leading-tight">Chat</p>
           <p className="text-xs text-slate-400">ID: {selectedUserId}</p>
         </div>
+        <div className="ml-auto flex items-center gap-3">
+          <div className="text-right">
+            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-400">AI model</p>
+            <p className="text-xs font-medium text-slate-700">{selectedModel}</p>
+          </div>
+          <label className="text-xs text-slate-500 flex flex-col gap-1">
+            <span className="sr-only">Select AI model</span>
+            <select
+              value={selectedModel}
+              onChange={(e) => onSelectedModelChange(e.target.value)}
+              className="rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+            >
+              {availableModels.map((model) => (
+                <option key={model} value={model}>
+                  {model}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
       </div>
 
       {/* Chat Messages */}
@@ -137,7 +230,7 @@ const ChatBox = ({ selectedUserId }) => {
 
         {visibleMessages.map((msg, index) => (
           <div
-            key={index}
+            key={msg._id ?? index}
             className={`flex flex-col ${msg.fromMe ? 'items-end' : 'items-start'}`}
           >
             <div
@@ -147,9 +240,14 @@ const ChatBox = ({ selectedUserId }) => {
                   : 'bg-white border border-slate-200 text-slate-800 rounded-2xl rounded-bl-md'
               }`}
             >
-              <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+              <p className="whitespace-pre-wrap break-words">
+                {msg.text}
+                {msg.streaming && (
+                  <span className="inline-block w-1.5 h-4 ml-0.5 align-middle bg-slate-400 animate-pulse" />
+                )}
+              </p>
               <p className={`text-[10px] mt-1 text-right ${msg.fromMe ? 'text-indigo-100' : 'text-slate-400'}`}>
-                {msg.time}
+                {msg.streaming ? 'typing…' : msg.time}
               </p>
             </div>
             {msg.delivered && msg.fromMe && (

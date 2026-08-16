@@ -6,6 +6,13 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/userSchema");
 const axiosInstance = require("../services/axiosInstance");
 
+const AI_USER_ID = "64f000000000000000000001";
+const DEFAULT_AI_MODEL = "gpt-oss:120b-cloud";
+const ALLOWED_AI_MODELS = new Set([DEFAULT_AI_MODEL, "qwen:1.8b"]);
+
+const resolveAiModel = (requestedModel) =>
+  ALLOWED_AI_MODELS.has(requestedModel) ? requestedModel : DEFAULT_AI_MODEL;
+
 const app = express();
 
 const server = http.createServer(app);
@@ -74,6 +81,7 @@ io.on("connection", async (socket) => {
   socket.on("send_message", async ({ roomId, message }) => {
     try {
       const messages = new Message(message);
+      // console.log(roomId, message);
       io.emit("receive_message", message);
       const receiverUser = await User.findById(message.to);
       if (receiverUser.status == "online") {
@@ -82,24 +90,120 @@ io.on("connection", async (socket) => {
       messages.save();
 
       //FOR AI chat
-      if (message.to === "64f000000000000000000001") {
-        const response = await axiosInstance.post("/api/generate", {
-          model: "gpt-oss:120b-cloud",
-          prompt: message.text,
-          stream: false,
-        });
-        const text = response.data.response;
-        const AiResponse = new Message({
-          from: message.to,
-          to: message.from,
-          text: text,
-          delivered: true,
-          time: Date.now(),
-        });
-        io.emit("receive_message", AiResponse);
-        AiResponse.save();
-      }
+      if (message.to === AI_USER_ID) {
+        const aiModel = resolveAiModel(message.model);
 
+        // A single id ties together the start/chunk/end events for this
+        // particular AI reply so the frontend can grow the right bubble.
+        const streamId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+        io.to(roomId).emit("ai_stream_start", {
+          roomId,
+          streamId,
+          from: AI_USER_ID,
+          to: message.from,
+        });
+
+        try {
+          // NOTE: responseType "stream" tells axios to give us a Node.js
+          // readable stream (response.data) instead of buffering the
+          // whole body, which is what lets us read Ollama's NDJSON
+          // chunks as they arrive.
+          const response = await axiosInstance.post(
+            "/api/generate",
+            {
+              model: aiModel,
+              prompt: message.text,
+              stream: true,
+            },
+            { responseType: "stream" },
+          );
+
+          let buffer = "";
+          let fullResponseText = "";
+
+          response.data.on("data", (chunk) => {
+            buffer += chunk.toString();
+
+            // Ollama sends one JSON object per line (NDJSON). A single
+            // TCP chunk can contain multiple lines, or a partial line,
+            // so we split on "\n" and keep the last (possibly
+            // incomplete) piece buffered for the next chunk.
+            const lines = buffer.split("\n");
+            buffer = lines.pop();
+
+            for (const line of lines) {
+              if (!line.trim()) continue;
+
+              try {
+                const parsed = JSON.parse(line);
+
+                if (parsed.response) {
+                  fullResponseText += parsed.response;
+                  io.to(roomId).emit("ai_stream_chunk", {
+                    roomId,
+                    streamId,
+                    text: parsed.response,
+                  });
+                }
+
+                if (parsed.done) {
+                  io.to(roomId).emit("ai_stream_end", {
+                    roomId,
+                    streamId,
+                    fullText: fullResponseText,
+                    stats: {
+                      done_reason: parsed.done_reason,
+                      total_duration: parsed.total_duration,
+                      eval_count: parsed.eval_count,
+                    },
+                  });
+
+                  const aiMessage = new Message({
+                    from: AI_USER_ID,
+                    to: message.from,
+                    text: fullResponseText,
+                    time: Date.now(),
+                    delivered: true,
+                    seen: false,
+                  });
+                  aiMessage
+                    .save()
+                    .catch((saveErr) =>
+                      console.log("Error saving AI message", saveErr),
+                    );
+                }
+              } catch (parseErr) {
+                console.log(
+                  "Failed to parse AI stream line:",
+                  line,
+                  parseErr.message,
+                );
+              }
+            }
+          });
+
+          response.data.on("end", () => {
+            console.log("AI stream ended.");
+          });
+
+          response.data.on("error", (streamErr) => {
+            console.log("AI stream error:", streamErr.message);
+            io.to(roomId).emit("ai_stream_error", {
+              roomId,
+              streamId,
+              message: streamErr.message,
+            });
+          });
+        } catch (err) {
+          console.log("Error calling AI generate endpoint:", err.message);
+          io.to(roomId).emit("ai_stream_error", {
+            roomId,
+            streamId,
+            message: err.message,
+          });
+        }
+      }
     } catch (err) {
       console.log("Error saving messgaes in database", err);
     }
